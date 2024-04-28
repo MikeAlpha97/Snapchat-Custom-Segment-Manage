@@ -27,49 +27,66 @@ country_codes = [
     {'code': '92', 'len': 10, 'name': 'PAK'}
     # Add more country codes as needed
 ]
-
+# Define a route '/custom_audience' which supports GET and POST methods
 @app.route('/custom_audience', methods=['GET', 'POST'])
 def custom_audience():
     try:
+        # If the request method is GET
         if request.method == 'GET':
+            # Retrieve all data from the 'audience' table
             query_get_audience_data = ("SELECT * FROM audience")
             cursor.execute(query_get_audience_data)
+            # Get column names
             desc = cursor.description
             column_names = [col[0] for col in desc]
+            # Create a list of dictionaries representing rows of data
             audience = [dict(zip(column_names, row))
                          for row in cursor.fetchall()]
+            # Return data in JSON format with a success status code
             return jsonify({"response": "success", "data": audience}), 200
+        # If the request method is POST
         elif request.method == 'POST':
             try:
-                pass
+                # Extract email, advertisement ID, and mobile number from the JSON request data
                 email = request.json['email'] if request.json['email']!=None else ''
                 adv_id = request.json['name'] if request.json['adv_id']!=None else ''
                 mobile = request.json['mobile'] if request.json['mobile']!=None else ''
-
+                # Insert the data into the 'AUDIENCE' table, ignoring duplicates based on mobile number
                 query = f"""INSERT INTO AUDIENCE (ad_id, email, mobile) VALUES ('{adv_id}', '{email}', '{mobile}') ON CONFLICT (mobile) DO NOTHING;"""
                 cursor.execute(query)
+                # Commit the transaction
                 cnxn.commit()
+                # Return success response
                 return jsonify({"response": "success"}), 200
             except Exception as e:
+                # Handle exceptions, print the error, and return an error response
                 print(e)
                 return jsonify({"response": "error", "Error": e}), 500
     except Exception as e:
+        # Rollback the transaction in case of exceptions and return a failure response
         cursor.execute("ROLLBACK")
         return jsonify({"response": "failed!", "message": e}), 205
 
+# Define a route '/generate_random_data' which supports GET method
 @app.route('/generate_random_data', methods=['GET'])
 def generate_random_data():
     try:
+        # Generate and insert random data into the 'custom_audience' table
         for i in range(0,100):
+            # Generate random email, advertisement ID, and mobile number
             email = generate_random_email()
             adv_id = generate_random_advertisement_id()
             mobile = generate_random_mobile_number(country_codes)
 
+            # Insert the generated data into the 'custom_audience' table, ignoring duplicates based on mobile number
             query = f"""INSERT INTO custom_audience (ad_id, email, mobile) VALUES ('{adv_id}', '{email}', '{mobile}') ON CONFLICT (mobile) DO NOTHING;"""
             cursor.execute(query)
+            # Commit the transaction
             cnxn.commit()
+        # Return success response
         return jsonify({"response": "success"}), 200
     except Exception as e:
+        # Rollback the transaction in case of exceptions and return a failure response
         cursor.execute("ROLLBACK")
         return jsonify({"response": "failed!", "message": e}), 205
 
